@@ -66,7 +66,7 @@ volatile uint16_t* terminal_buffer;
 void terminal_initialize(void){
 	terminal_row = 0;
 	terminal_column = 0;
-	terminal_colour = vga_entry_colour(VGA_COLOUR_BLACK, VGA_COLOUR_WHITE);
+	terminal_colour = vga_entry_colour(VGA_COLOUR_LIGHT_BROWN, VGA_COLOUR_BROWN);
 	terminal_buffer = (uint16_t*) 0xB8000;
 	
 	for (size_t y = 0; y < VGA_HEIGHT; y++){
@@ -91,9 +91,11 @@ void terminal_putchar(char c){
 
 	if (++terminal_column == VGA_WIDTH){
 		terminal_column = 0;
-		if (++terminal_row == VGA_HEIGHT)
+		if (++terminal_row == VGA_HEIGHT){
 			terminal_row = 0;
-
+	
+			terminal_scroll();
+		}
 			//add terminal scroll down code here
 	}
 }
@@ -116,14 +118,55 @@ static inline uint8_t inb(uint16_t port){
 	return ret;
 }
 
+void terminal_linebreak(void){
+	terminal_column = 0;
+	terminal_row = ++terminal_row;
+
+}
+
+void terminal_writeline(const char* data){
+	terminal_writestring(data);
+	terminal_linebreak();
+
+}
+
+void clear_array(char* str){
+	int i;
+	for(i = 0; i<=(sizeof(str) / sizeof(str[0])); ++i)
+		str[i] = 0;
+
+}
 
 
-
+void terminal_scroll(){
+	/*
+	for(int i = 0; i < VGA_HEIGHT; i++){
+		for(int n = 0; n<VGA_WIDTH; n++){
+			terminal_buffer[i * VGA_WIDTH+ n] = terminal_buffer[(i + 1) * VGA_WIDTH+ n];
+		}
+	}
+	*/	
+	//memmove(terminal_buffer, terminal_buffer + 80*2, 80*25*2);
+}
 void kernel_main(void){
+	char buffer[20]; //stores the input of the user so that it can be evaluated
+	
+	int n;
+
+	//for(n=0; n<=20; n++)
+		//terminal_writestring(buffer[n]);
+	
+	int i = 0;
+	
+
+	
+
 	//initialize terminal interface
 	terminal_initialize();
-
+	
 	terminal_writestring("BasedOS:");
+	
+
 	
 //	while(1){
 	//		terminal_writestring(getchar());
@@ -137,43 +180,54 @@ void kernel_main(void){
 	
 		switch(inb(0x60)){
 			case 0x1C: //if enter pressed
-				terminal_column = 0;
-				terminal_row = terminal_row + 1;
+				i = 0;
+				clear_array(buffer);
+				//terminal_column = 0;
+				//terminal_row = terminal_row + 1;
+				terminal_linebreak();
 				terminal_writestring("BasedOS:");
 				break;
 			case 0x0E:
 				//terminal_writestring("backspace pressed");
-				terminal_column = terminal_column - 1;
-				terminal_writestring(" ");
-				terminal_column = terminal_column - 1;
+				if(terminal_column > 8){
+					terminal_column = terminal_column - 1;
+					terminal_writestring(" ");
+					terminal_column = terminal_column - 1;
+					
+					i  = --i;
+					buffer[i] = 0;
+	
+				}
 				break;
-			case 0x1E:terminal_writestring("a"); break;
-			case 0x30:terminal_writestring("b"); break;
-			case 0x2E:terminal_writestring("c"); break;
-			case 0x20:terminal_writestring("d"); break;
-			case 0x12:terminal_writestring("e"); break;
-			case 0x21:terminal_writestring("f"); break;
-			case 0x22:terminal_writestring("g"); break;
-			case 0x23:terminal_writestring("h"); break;
-			case 0x17:terminal_writestring("i"); break;
-			case 0x24:terminal_writestring("j"); break;
-			case 0x25:terminal_writestring("k"); break;
-			case 0x26:terminal_writestring("l"); break;
-			case 0x32:terminal_writestring("m"); break;
-			case 0x31:terminal_writestring("n"); break;
-			case 0x18:terminal_writestring("o"); break;
-			case 0x19:terminal_writestring("p"); break;
-			case 0x10:terminal_writestring("q"); break;
-			case 0x13:terminal_writestring("r"); break;
-			case 0x1F:terminal_writestring("s"); break;
-			case 0x14:terminal_writestring("t"); break;
-			case 0x3C:terminal_writestring("u"); break;
-			case 0x2F:terminal_writestring("v"); break;
-			case 0x11:terminal_writestring("w"); break;
-			case 0x2D:terminal_writestring("x"); break;
-			case 0x15:terminal_writestring("y"); break;
-			case 0x2C:terminal_writestring("z"); break;
-			case 0x39:terminal_writestring(" "); break;
+			case 0x1E:terminal_writestring("a"); buffer[i] = 'a'; i = ++i; break;
+			case 0x30:terminal_writestring("b"); buffer[i] = 'b'; i = ++i; break;
+			case 0x2E:terminal_writestring("c"); buffer[i] = 'c'; i = ++i; break;
+			case 0x20:terminal_writestring("d"); buffer[i] = 'd'; i = ++i; break;
+			case 0x12:terminal_writestring("e"); buffer[i] = 'e'; i = ++i; break;
+			case 0x21:terminal_writestring("f"); buffer[i] = 'f'; i = ++i; break;
+			case 0x22:terminal_writestring("g"); buffer[i] = 'g'; i = ++i; break;
+			case 0x23:terminal_writestring("h"); buffer[i] = 'h'; i = ++i; break;
+			case 0x17:terminal_writestring("i"); buffer[i] = 'i'; i = ++i; break;
+			case 0x24:terminal_writestring("j"); buffer[i] = 'j'; i = ++i; break;
+			case 0x25:terminal_writestring("k"); buffer[i] = 'k'; i = ++i; break;
+			case 0x26:terminal_writestring("l"); buffer[i] = 'l'; i = ++i; break;
+			case 0x32:terminal_writestring("m"); buffer[i] = 'm'; i = ++i; break;
+			case 0x31:terminal_writestring("n"); buffer[i] = 'n'; i = ++i; break;
+			case 0x18:terminal_writestring("o"); buffer[i] = 'o'; i = ++i; break;
+			case 0x19:terminal_writestring("p"); buffer[i] = 'p'; i = ++i; break;
+			case 0x10:terminal_writestring("q"); buffer[i] = 'q'; i = ++i; break;
+			case 0x13:terminal_writestring("r"); buffer[i] = 'r'; i = ++i; break;
+			case 0x1F:terminal_writestring("s"); buffer[i] = 's'; i = ++i; break;
+			case 0x14:terminal_writestring("t"); buffer[i] = 't'; i = ++i; break;
+			case 0x3C:terminal_writestring("u"); buffer[i] = 'u'; i = ++i; break;
+			case 0x2F:terminal_writestring("v"); buffer[i] = 'v'; i = ++i; break;
+			case 0x11:terminal_writestring("w"); buffer[i] = 'w'; i = ++i; break;
+			case 0x2D:terminal_writestring("x"); buffer[i] = 'x'; i = ++i; break;
+			case 0x15:terminal_writestring("y"); buffer[i] = 'y'; i = ++i; break;
+			case 0x2C:terminal_writestring("z"); buffer[i] = 'z'; i = ++i; break;
+			case 0x39:terminal_writestring(" "); buffer[i] = ' '; i = ++i; break;
+
+		terminal_writeline(buffer);
 		}
 	}
 	
