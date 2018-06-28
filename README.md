@@ -15,3 +15,4 @@ Future plans:
 -implementation of a file system
 -the addition of the above two would mean that within BasedOS, you could write BasedBash files, and interpret them aswell as just doing so from a command line
 
+
