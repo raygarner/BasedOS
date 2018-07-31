@@ -32,8 +32,11 @@ enum vga_colour{
 	VGA_COLOUR_WHITE = 15,
 };
 
-/*calculates the terminal colour from light grey and black by applying a bitwise OR
-and then a bitwise left shift*/
+
+void terminal_scroll();
+void terminal_putchar(char c);
+void terminal_writestring(const char* data);
+
 static inline uint8_t vga_entry_colour(enum vga_colour fg, enum vga_colour bg){
 	return fg | bg << 4;
 }
@@ -66,7 +69,7 @@ volatile uint16_t* terminal_buffer;
 void terminal_initialize(void){
 	terminal_row = 0;
 	terminal_column = 0;
-	terminal_colour = vga_entry_colour(VGA_COLOUR_LIGHT_BROWN, VGA_COLOUR_BROWN);
+	terminal_colour = vga_entry_colour(VGA_COLOUR_BLACK, VGA_COLOUR_LIGHT_GREY);
 	terminal_buffer = (uint16_t*) 0xB8000;
 	
 	for (size_t y = 0; y < VGA_HEIGHT; y++){
@@ -77,13 +80,28 @@ void terminal_initialize(void){
 	}
 }
 
+void clear_line(){
+  terminal_column = 0;
+  terminal_writestring("                                                                               "); //writes a line of spaces
+  terminal_buffer[24 * 80 + 79] = vga_entry(' ', terminal_colour); 
+  
+  /*
+  for(j = 0; j<VGA_WIDTH ;++j)
+    terminal_putchar(' ');
+  */
+
+  terminal_column = 0;
+
+
+}
+
 void terminal_setcolour(uint8_t colour){
 	terminal_colour = colour;
 }
 
-void terminal_putentryat(char c, uint8_t colour, size_t x, size_t y){
-	const size_t index = y * VGA_WIDTH + x;
-	terminal_buffer[index] = vga_entry(c, colour);
+void terminal_putentryat(char c, uint8_t colour, size_t x /*terminal column*/, size_t y /*terminal row*/){
+	const size_t index = y * VGA_WIDTH + x; //calculates the cell to write at
+	terminal_buffer[index] = vga_entry(c, colour); //places the character at the correct point
 }
 
 void terminal_putchar(char c){
@@ -92,11 +110,10 @@ void terminal_putchar(char c){
 	if (++terminal_column == VGA_WIDTH){
 		terminal_column = 0;
 		if (++terminal_row == VGA_HEIGHT){
-			terminal_row = 0;
+			//terminal_row = 0;
 	
 			terminal_scroll();
 		}
-			//add terminal scroll down code here
 	}
 }
 
@@ -120,7 +137,7 @@ static inline uint8_t inb(uint16_t port){
 
 void terminal_linebreak(void){
 	terminal_column = 0;
-	terminal_row = ++terminal_row;
+	++terminal_row;
 
 }
 
@@ -139,15 +156,25 @@ void clear_array(char* str){
 
 
 void terminal_scroll(){
-	/*
-	for(int i = 0; i < VGA_HEIGHT; i++){
-		for(int n = 0; n<VGA_WIDTH; n++){
-			terminal_buffer[i * VGA_WIDTH+ n] = terminal_buffer[(i + 1) * VGA_WIDTH+ n];
-		}
-	}
-	*/	
-	//memmove(terminal_buffer, terminal_buffer + 80*2, 80*25*2);
+  int x;
+  int y;
+
+  for(x = 0; x<80; ++x){
+    for(y = 0; y<24; ++y){
+      terminal_buffer[y * 80 + x] = terminal_buffer[(y + 1) * 80 + x];
+
+    }
+  }
+
+  terminal_row = 24;
+  clear_line();
+  //terminal_writestring("BasedOS:");
+
+
 }
+
+
+
 void kernel_main(void){
 	char buffer[20]; //stores the input of the user so that it can be evaluated
 	
@@ -180,11 +207,20 @@ void kernel_main(void){
 	
 		switch(inb(0x60)){
 			case 0x1C: //if enter pressed
+        //terminal_writestring("Enter pressed"); 
+        if(++terminal_row == VGA_HEIGHT){
+          terminal_scroll();
+          terminal_writestring("BasedOS:");
+          break;
+
+        }
+        
 				i = 0;
 				clear_array(buffer);
 				//terminal_column = 0;
 				//terminal_row = terminal_row + 1;
-				terminal_linebreak();
+				//terminal_linebreak();
+        terminal_column = 0;
 				terminal_writestring("BasedOS:");
 				break;
 			case 0x0E:
@@ -194,7 +230,7 @@ void kernel_main(void){
 					terminal_writestring(" ");
 					terminal_column = terminal_column - 1;
 					
-					i  = --i;
+					--i;
 					buffer[i] = 0;
 	
 				}
@@ -227,7 +263,7 @@ void kernel_main(void){
 			case 0x2C:terminal_writestring("z"); buffer[i] = 'z'; i = ++i; break;
 			case 0x39:terminal_writestring(" "); buffer[i] = ' '; i = ++i; break;
 
-		terminal_writeline(buffer);
+		//terminal_writeline(buffer);
 		}
 	}
 	
